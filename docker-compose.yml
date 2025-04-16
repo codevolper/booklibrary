@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  webapi:
+    image: booklibrary-webapi
+    build:
+      context: .
+      dockerfile: BookLibrary.WebApi/Dockerfile
+    container_name: BookLibrary.WebApi
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    networks:
+      - booklibrary-network
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db;Database=booklibrary_db;User=sa;Password=SqlDevP@ss;Encrypt=True;TrustServerCertificate=True;
+    depends_on:
+      - db
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: BookLibrary.DB
+    ports:
+      - "1433:1433"
+    networks:
+      - booklibrary-network
+    environment:
+      SA_PASSWORD: "SqlDevP@ss"
+      ACCEPT_EULA: "Y"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/mssql/bin/sqlservr &
+        sleep 30s
+        /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P SqlDevP@ss -d master -i /docker-entrypoint-initdb.d/init.sql
+        wait
+
+networks:
+  booklibrary-network:
+    driver: bridge
